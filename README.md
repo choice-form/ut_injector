@@ -18,11 +18,20 @@ end
 
 ## 使用
 
+**可选**，把 `ut_injector` 的 DSL 加入 `.formatter.exs` ：
+
+```elixlr
+# in .formatter.exs
+[
+  import_deps: [:ut_injector],
+]
+```
+
 在你的 app 中定义 `Injector` 模块。如果是 umbrella app ，你可能需要定义多个 `Injector` ，这取决于你是否要进行 app 之间的依赖隔离。
 
 ```elixir
 defmodule YourApp.Injector do
-  use UtInjector
+  use UtInjector, app: :your_app
 end
 ```
 
@@ -33,13 +42,17 @@ end
 ```elixir
 # in config/config.exs
 config :your_app, YourApp.Injector,
-  mod_1: YourApp.Mod1,
-  mod_2: YourApp.Mod2
+  registry: %{
+    mod_1: YourApp.Mod1,
+    mod_2: YourApp.Mod2
+  }
 
 # in config/test.exs
 config :your_app, YourApp.Injector,
-  mod_1: YourApp.Mod1Mock,
-  mod_2: YourApp.Mod2Mock
+  registry: %{
+    mod_1: YourApp.Mod1Mock,
+    mod_2: YourApp.Mod2Mock
+  }
 ```
 
 **可选**，为了保证实际模块和 Mock 模块的行为一致，推荐定义 behaviour ，并用 Mox & Hammox 生成测试模块：
