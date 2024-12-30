@@ -28,17 +28,36 @@ defmodule UtInjector do
         end
       end
 
+      @doc """
+      以生成函数的形式注入 key 相关的事物
+
+      ## 可选参数
+
+      - `as` - 函数名，默认跟 key 同名
+      - `public` - 是否生成公有函数。默认值 `false`
+      """
+      @spec inject_function(key :: atom(), opts :: [as: atom(), public: boolean()]) :: any()
       defmacro inject_function(key, opts \\ []) do
         fn_name = opts[:as] || key
+        public = opts[:public] || false
         injector = __MODULE__
 
-        quote do
-          @doc """
-          Inject module registered as key #{inspect(unquote(key))}
-          """
-          @spec unquote(fn_name)() :: module()
-          def unquote(fn_name)() do
-            unquote(injector).fetch!(unquote(key))
+        if public do
+          quote do
+            @doc """
+            Inject module registered as key #{inspect(unquote(key))}
+            """
+            @spec unquote(fn_name)() :: module()
+            def unquote(fn_name)() do
+              unquote(injector).fetch!(unquote(key))
+            end
+          end
+        else
+          quote do
+            @spec unquote(fn_name)() :: module()
+            defp unquote(fn_name)() do
+              unquote(injector).fetch!(unquote(key))
+            end
           end
         end
       end
