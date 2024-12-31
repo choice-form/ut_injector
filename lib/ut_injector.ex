@@ -34,30 +34,39 @@ defmodule UtInjector do
       ## 可选参数
 
       - `as` - 函数名，默认跟 key 同名
-      - `public` - 是否生成公有函数。默认值 `false`
       """
-      @spec inject_function(key :: atom(), opts :: [as: atom(), public: boolean()]) :: any()
+      @spec inject_function(key :: atom(), opts :: [as: atom()]) :: any()
       defmacro inject_function(key, opts \\ []) do
         fn_name = opts[:as] || key
-        public = opts[:public] || false
         injector = __MODULE__
 
-        if public do
-          quote do
-            @doc """
-            Inject module registered as key #{inspect(unquote(key))}
-            """
-            @spec unquote(fn_name)() :: module()
-            def unquote(fn_name)() do
-              unquote(injector).fetch!(unquote(key))
-            end
+        quote do
+          @doc "Inject module registered as key #{inspect(unquote(key))}"
+          @spec unquote(fn_name)() :: module()
+          def unquote(fn_name)() do
+            unquote(injector).fetch!(unquote(key))
           end
-        else
-          quote do
-            @spec unquote(fn_name)() :: module()
-            defp unquote(fn_name)() do
-              unquote(injector).fetch!(unquote(key))
-            end
+        end
+      end
+
+      @doc """
+      以生成宏的形式注入 key 相关的事物
+
+      ## 可选参数
+
+      - `as` - 函数名，默认跟 key 同名
+      """
+      defmacro inject_macro(key, opts \\ []) do
+        fn_name = opts[:as] || key
+        injector = __MODULE__
+        mod = injector.fetch!(key)
+
+        quote do
+          Module.put_attribute(__MODULE__, unquote(fn_name), unquote(mod))
+
+          @doc "Inject module #{inspect(unquote(mod))} registered as key #{inspect(unquote(key))}"
+          defmacro unquote(fn_name)() do
+            unquote(mod)
           end
         end
       end
@@ -67,7 +76,14 @@ defmodule UtInjector do
 
         quote do
           require unquote(injector)
-          import unquote(injector), only: [inject_function: 1, inject_function: 2]
+
+          import unquote(injector),
+            only: [
+              inject_function: 1,
+              inject_function: 2,
+              inject_macro: 1,
+              inject_macro: 2
+            ]
         end
       end
     end
