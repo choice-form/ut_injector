@@ -18,7 +18,7 @@ end
 
 ## 使用
 
-**可选**，把 `ut_injector` 的 DSL 加入 `.formatter.exs` ：
+首先推荐把 `ut_injector` 的 DSL 加入 `.formatter.exs` ：
 
 ```elixlr
 # in .formatter.exs
@@ -80,15 +80,19 @@ Hammox.defmock(YourApp.Mod1Mock, for: YourApp.Mod1Intf)
 defmodule YourApp.TopLevelMod do
   use YourApp.Injector
 
-  # 这会为该模块生成 mod_1/0 函数，返回值是被注入的东西
-  inject_function :mod_1
+  # 编译时注入，同样支持 as。这会生成 mod_three/0 的宏
+  # 编译时的好处是可以利用 Elixir 的编译时检查，比如函数不存在时警告
+  inject_macro :mod_1
 
+  # 运行时注入。这会为生成 mod_1/0 函数，返回值是被注入的东西
+  inject_function :mod_2
   # 也可以修改生成的函数名
-  inject_function :mod_2, as: :mod_two
+  inject_function :mod_3, as: :mod_three
 
   def hello do
     mod_1().some_func()
-    mod_two().some_func()
+    mod_2().some_func()
+    mod_three().some_func()
   end
 end
 ```
