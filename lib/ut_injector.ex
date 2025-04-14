@@ -6,7 +6,7 @@ defmodule UtInjector do
       def registry do
         case Application.get_env(unquote(app), __MODULE__) do
           [{key, _} | _] = reg when is_atom(key) ->
-            Keyword.fetch!(reg, :registry)
+            reg |> Keyword.fetch!(:registry) |> Map.new()
 
           _ ->
             raise "#{inspect(__MODULE__)}: the registry is empty or not set. Please define a registry as follow:\n\n" <>
@@ -34,17 +34,26 @@ defmodule UtInjector do
       ## 可选参数
 
       - `as` - 函数名，默认跟 key 同名
+      - `public` - 是否以公共函数的形式注入。默认值 `false`
       """
       @spec inject_function(key :: atom(), opts :: [as: atom()]) :: any()
       defmacro inject_function(key, opts \\ []) do
         fn_name = opts[:as] || key
+        public? = opts[:public] || false
         injector = __MODULE__
 
         quote do
-          @doc "Inject module registered as key #{inspect(unquote(key))}"
-          @spec unquote(fn_name)() :: module()
-          def unquote(fn_name)() do
-            unquote(injector).fetch!(unquote(key))
+          if unquote(public?) do
+            @doc "Inject module registered as key #{inspect(unquote(key))}"
+            @spec unquote(fn_name)() :: module()
+            def unquote(fn_name)() do
+              unquote(injector).fetch!(unquote(key))
+            end
+          else
+            @spec unquote(fn_name)() :: module()
+            defp unquote(fn_name)() do
+              unquote(injector).fetch!(unquote(key))
+            end
           end
         end
       end
@@ -55,18 +64,25 @@ defmodule UtInjector do
       ## 可选参数
 
       - `as` - 函数名，默认跟 key 同名
+      - `public` - 是否以公共宏的形式注入。默认值 `false`
       """
       defmacro inject_macro(key, opts \\ []) do
         fn_name = opts[:as] || key
-        injector = __MODULE__
-        mod = injector.fetch!(key)
+        public? = opts[:public] || false
+        mod = __MODULE__.fetch!(key)
 
         quote do
           Module.put_attribute(__MODULE__, unquote(fn_name), unquote(mod))
 
-          @doc "Inject module #{inspect(unquote(mod))} registered as key #{inspect(unquote(key))}"
-          defmacro unquote(fn_name)() do
-            unquote(mod)
+          if unquote(public?) do
+            @doc "Inject module #{inspect(unquote(mod))} registered as key #{inspect(unquote(key))}"
+            defmacro unquote(fn_name)() do
+              unquote(mod)
+            end
+          else
+            defmacrop unquote(fn_name)() do
+              unquote(mod)
+            end
           end
         end
       end
@@ -88,26 +104,4 @@ defmodule UtInjector do
       end
     end
   end
-
-  # defmacro inject(name) do
-  #   quote bind_quoted: [name: name] do
-  #     mod =
-  #       Application.compile_env!(:txwf, TXWF.Injector)
-  #       |> Keyword.fetch!(name)
-  #
-  #     Module.put_attribute(__MODULE__, name, mod)
-  #   end
-  # end
-  #
-  # def fetch_mod!(name) do
-  #   case Keyword.fetch(mods(), name) do
-  #     {:ok, mod} -> mod
-  #     :error -> raise "Can't inject module which registered as #{inspect(name)}"
-  #   end
-  # end
-  #
-  # defp mods do
-  #   Application.fetch_env!(:txwf, __MODULE__)
-  # end
-  #
 end
